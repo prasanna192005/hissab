@@ -104,7 +104,9 @@ export default function ReceiptSplitter() {
   const [people, setPeople] = useState<string[]>([]);
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [payer, setPayer] = useState<string>("");
-  const [taxTip, setTaxTip] = useState<number>(0);
+  const [gst, setGst] = useState<number>(0);
+  const [serviceCharge, setServiceCharge] = useState<number>(0);
+  const [tip, setTip] = useState<number>(0);
 
   // UPI payment configurations
   const [upiId, setUpiId] = useState("");
@@ -667,15 +669,25 @@ export default function ReceiptSplitter() {
       }
     });
 
-    // Handle optional taxes/tips (divided equally)
-    const extraPerPerson = taxTip > 0 ? taxTip / people.length : 0;
-    if (extraPerPerson > 0) {
+    // Proportional GST + Service Charge distribution based on consumed item shares
+    const totalExtraTaxes = gst + serviceCharge;
+    if (totalExtraTaxes > 0 && itemsTotal > 0) {
       people.forEach((p) => {
-        totals[p] = (totals[p] || 0) + extraPerPerson;
+        const personSubtotal = totals[p] || 0;
+        const taxShare = (personSubtotal / itemsTotal) * totalExtraTaxes;
+        totals[p] = personSubtotal + taxShare;
       });
     }
 
-    const grandTotal = itemsTotal + taxTip;
+    // Flat distribution for Tip/Round-off
+    const tipShare = tip > 0 ? tip / people.length : 0;
+    if (tipShare > 0) {
+      people.forEach((p) => {
+        totals[p] = (totals[p] || 0) + tipShare;
+      });
+    }
+
+    const grandTotal = itemsTotal + gst + serviceCharge + tip;
 
     return { totals, itemsTotal, grandTotal };
   };
@@ -686,9 +698,11 @@ export default function ReceiptSplitter() {
   const getWhatsAppShareLink = () => {
     let msg = `*Hissab Bill Settlement Summary*\n`;
     msg += `Total Amount: ₹${grandTotal.toFixed(2)}\n`;
-    if (taxTip > 0) {
-      msg += `(Subtotal: ₹${itemsTotal.toFixed(2)} + Tax/Tip: ₹${taxTip.toFixed(2)})\n`;
-    }
+    msg += `(Subtotal: ₹${itemsTotal.toFixed(2)}`;
+    if (gst > 0) msg += ` + GST: ₹${gst.toFixed(2)}`;
+    if (serviceCharge > 0) msg += ` + Svc Chg: ₹${serviceCharge.toFixed(2)}`;
+    if (tip > 0) msg += ` + Tip: ₹${tip.toFixed(2)}`;
+    msg += `)\n`;
     msg += `Payer: *${payer}*\n\n`;
     msg += `*Individual Shares:*\n`;
     
@@ -708,9 +722,11 @@ export default function ReceiptSplitter() {
   const copySummaryToClipboard = () => {
     let msg = `Hissab Bill Settlement Summary\n`;
     msg += `Total Amount: ₹${grandTotal.toFixed(2)}\n`;
-    if (taxTip > 0) {
-      msg += `(Subtotal: ₹${itemsTotal.toFixed(2)} + Tax/Tip: ₹${taxTip.toFixed(2)})\n`;
-    }
+    msg += `(Subtotal: ₹${itemsTotal.toFixed(2)}`;
+    if (gst > 0) msg += ` + GST: ₹${gst.toFixed(2)}`;
+    if (serviceCharge > 0) msg += ` + Svc Chg: ₹${serviceCharge.toFixed(2)}`;
+    if (tip > 0) msg += ` + Tip: ₹${tip.toFixed(2)}`;
+    msg += `)\n`;
     msg += `Payer: ${payer}\n\n`;
     msg += `Individual Shares:\n`;
     
@@ -949,6 +965,9 @@ export default function ReceiptSplitter() {
                 ? "* Gemini cloud parsing: Fast and highly accurate for restaurant snaps."
                 : "* Local browser parsing: Extracts text locally without uploading your image."}
             </p>
+            <p className="text-[8px] text-stone-500 mt-1.5 leading-normal border-t border-stone-200 border-dashed pt-1.5 font-bold uppercase tracking-wider">
+              * Note: Hissab extracts base food/beverage items only. Taxes (GST, Service Charge) and tips can be added on the final screen to split them proportionally.
+            </p>
           </div>
 
           <div
@@ -998,6 +1017,19 @@ export default function ReceiptSplitter() {
             >
               Enter manually
             </button>
+          </div>
+
+          {/* Scanning Tips Panel */}
+          <div className="p-4 bg-stone-50 border border-dashed border-stone-300 text-[9px] uppercase tracking-wider text-stone-600 space-y-2 leading-relaxed">
+            <span className="font-bold text-stone-850 block border-b border-stone-200 border-dashed pb-1 select-none">
+              Tips for Best OCR Results:
+            </span>
+            <ul className="list-disc pl-4 space-y-1 select-none">
+              <li>Keep the paper flat and avoid bends or creases.</li>
+              <li>Ensure even, bright lighting (avoid shadows of your hand).</li>
+              <li>Crop the photo closely to the printed bill area.</li>
+              <li>Make sure the text is sharp and not blurry.</li>
+            </ul>
           </div>
         </div>
       )}
@@ -1101,8 +1133,13 @@ export default function ReceiptSplitter() {
                         min="0"
                         value={item.unitPrice}
                         onChange={(e) => handleUpdateItem(item.id, "unitPrice", e.target.value)}
-                        className="w-full text-right text-xs border-0 border-b border-transparent focus:border-stone-500 py-0.5 bg-transparent font-bold"
+                        className="w-full text-right text-xs border-0 border-b border-transparent focus:border-stone-500 py-0.5 bg-transparent font-bold font-mono"
                       />
+                      {item.qty > 1 && (
+                        <span className="text-[8px] text-stone-400 font-mono block mt-0.5 select-none leading-none">
+                          Total: ₹{(item.qty * item.unitPrice).toFixed(0)}
+                        </span>
+                      )}
                     </div>
                     <div className="col-span-1 text-center">
                       <button
@@ -1116,6 +1153,12 @@ export default function ReceiptSplitter() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Subtotal preview for verification */}
+          <div className="flex justify-between items-baseline border-b border-stone-300 border-dashed pb-2.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Subtotal (Verify with receipt)</span>
+            <span className="text-sm font-bold text-stone-950">₹{items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0).toFixed(2)}</span>
           </div>
 
           <div className="flex justify-between items-center pt-2">
@@ -1255,9 +1298,14 @@ export default function ReceiptSplitter() {
       {/* 5. ASSIGN STEP */}
       {step === "ASSIGN" && (
         <div className="space-y-6 animate-fade-in pt-4">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-1">Item Assignment</h3>
-            <p className="text-[10px] text-stone-400 uppercase tracking-widest">Select who consumed what</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-1">Item Assignment</h3>
+              <p className="text-[10px] text-stone-400 uppercase tracking-widest">Select who consumed what</p>
+            </div>
+            <div className="bg-stone-100 border border-stone-300 px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider text-stone-700 select-none">
+              Assigned: {items.filter((item) => assignments[item.id] && assignments[item.id].length > 0).length} / {items.length}
+            </div>
           </div>
 
           {/* Natural Language Input */}
@@ -1397,19 +1445,99 @@ export default function ReceiptSplitter() {
             </div>
 
             {/* Optional Tax Tip Config */}
-            <div className="grid grid-cols-12 gap-3 items-center text-xs">
-              <div className="col-span-8 text-stone-600 font-bold uppercase tracking-wider text-[10px]">Add Tax / Tip (split equal):</div>
-              <div className="col-span-4 flex items-center border border-stone-300 bg-white">
-                <span className="pl-2 text-stone-400">₹</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={taxTip || ""}
-                  onChange={(e) => setTaxTip(parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className="w-full border-0 p-2 text-right outline-none text-xs font-bold"
-                />
+            <div className="space-y-4 pt-2.5 border-t border-stone-200 border-dashed">
+              {/* Proportional GST Config */}
+              <div className="grid grid-cols-12 gap-3 items-center text-xs">
+                <div className="col-span-8">
+                  <div className="text-stone-600 font-bold uppercase tracking-wider text-[10px]">Add GST (proportional split):</div>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5 select-none">
+                    <button
+                      type="button"
+                      onClick={() => setGst(parseFloat(((itemsTotal * 5) / 100).toFixed(2)))}
+                      className="text-[7.5px] border border-stone-300 bg-white hover:bg-stone-50 px-1.5 py-0.5 font-mono font-bold text-stone-600 active:translate-y-[0.5px] transition focus:outline-none"
+                    >
+                      5% (₹{((itemsTotal * 5) / 100).toFixed(0)})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGst(parseFloat(((itemsTotal * 12) / 100).toFixed(2)))}
+                      className="text-[7.5px] border border-stone-300 bg-white hover:bg-stone-50 px-1.5 py-0.5 font-mono font-bold text-stone-600 active:translate-y-[0.5px] transition focus:outline-none"
+                    >
+                      12% (₹{((itemsTotal * 12) / 100).toFixed(0)})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGst(parseFloat(((itemsTotal * 18) / 100).toFixed(2)))}
+                      className="text-[7.5px] border border-stone-300 bg-white hover:bg-stone-50 px-1.5 py-0.5 font-mono font-bold text-stone-600 active:translate-y-[0.5px] transition focus:outline-none"
+                    >
+                      18% (₹{((itemsTotal * 18) / 100).toFixed(0)})
+                    </button>
+                  </div>
+                </div>
+                <div className="col-span-4 flex items-center border border-stone-300 bg-white">
+                  <span className="pl-2 text-stone-400">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={gst || ""}
+                    onChange={(e) => setGst(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full border-0 p-2 text-right outline-none text-xs font-bold font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Proportional Service Charge Config */}
+              <div className="grid grid-cols-12 gap-3 items-center text-xs border-t border-stone-100 pt-3">
+                <div className="col-span-8">
+                  <div className="text-stone-600 font-bold uppercase tracking-wider text-[10px]">Add Service Charge (prop split):</div>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5 select-none">
+                    <button
+                      type="button"
+                      onClick={() => setServiceCharge(parseFloat(((itemsTotal * 5) / 100).toFixed(2)))}
+                      className="text-[7.5px] border border-stone-300 bg-white hover:bg-stone-50 px-1.5 py-0.5 font-mono font-bold text-stone-600 active:translate-y-[0.5px] transition focus:outline-none"
+                    >
+                      5% (₹{((itemsTotal * 5) / 100).toFixed(0)})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServiceCharge(parseFloat(((itemsTotal * 10) / 100).toFixed(2)))}
+                      className="text-[7.5px] border border-stone-300 bg-white hover:bg-stone-50 px-1.5 py-0.5 font-mono font-bold text-stone-600 active:translate-y-[0.5px] transition focus:outline-none"
+                    >
+                      10% (₹{((itemsTotal * 10) / 100).toFixed(0)})
+                    </button>
+                  </div>
+                </div>
+                <div className="col-span-4 flex items-center border border-stone-300 bg-white">
+                  <span className="pl-2 text-stone-400">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={serviceCharge || ""}
+                    onChange={(e) => setServiceCharge(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full border-0 p-2 text-right outline-none text-xs font-bold font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Flat Tip Config */}
+              <div className="grid grid-cols-12 gap-3 items-center text-xs border-t border-stone-100 pt-3">
+                <div className="col-span-8 text-stone-600 font-bold uppercase tracking-wider text-[10px]">Add Tip / Round-off (equal split):</div>
+                <div className="col-span-4 flex items-center border border-stone-300 bg-white">
+                  <span className="pl-2 text-stone-400">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={tip || ""}
+                    onChange={(e) => setTip(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full border-0 p-2 text-right outline-none text-xs font-bold font-mono"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1585,7 +1713,9 @@ export default function ReceiptSplitter() {
               setMimeType(null);
               setItems([]);
               setAssignments({});
-              setTaxTip(0);
+              setGst(0);
+              setServiceCharge(0);
+              setTip(0);
               setExpandedQrPerson(null);
             }}
             className="w-full text-center text-[10px] uppercase tracking-widest font-bold text-stone-400 hover:text-stone-900 transition py-4 border-t border-dashed border-stone-200"
