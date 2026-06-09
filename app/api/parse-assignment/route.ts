@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         const assigned: string[] = [];
 
         // Check if item name is mentioned in the text (fuzzy matching)
-        const isItemMentioned = itemLower.split(" ").some(word => 
+        const isItemMentioned = itemLower.split(" ").some((word: string) => 
           word.length > 3 && lowerText.includes(word)
         ) || lowerText.includes(itemLower);
 
