@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hissab
+### Free AI Bill Splitter App for Groups | Split Restaurant Bills Instantly
 
-## Getting Started
+No more awkward *"bhai, tera kitna hua?"* messages in WhatsApp groups after a heavy biryani dinner, dhaba party, or a quick momo run. **Hissab** does the math in a chutki!
 
-First, run the development server:
+Just snap a photo of the bill, assign who ate what, and generate custom **UPI QR Codes** for everyone to pay instantly. Clean, simple, and styled like a classic dukaan thermal receipt.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Why Hissab?
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+*   **Chutki mein OCR Scan**: Snap a photo of your receipt. Our Gemini AI model structures items, quantities, and prices faster than a local cutting-chai boils.
+*   **Bhai-style Assignment**: Tap diner names to split items, or type naturally like: 
+    > *"Amit and Priya shared the paneer tikka. Everyone had garlic naan and coke."* 
+    Hissab maps it automatically!
+*   **UPI QR Codes for Everyone**: Enter your UPI ID, and Hissab creates separate, exact-amount QR codes for each debtor. They scan, they pay, and your account is settled. No copy-pasting numbers.
+*   **Local Tesseract OCR Option**: No internet on the highway? Switch to local Tesseract OCR to parse text completely in your browser.
+*   **Dukaan Design Aesthetic**: Styled like a classic physical shop ticket receipt because digital splitters shouldn't look boring.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Built With
+*   **Next.js 16 (App Router)** & **React 19**
+*   **Tailwind CSS v4** (Custom physical ticket variables)
+*   **Google Gemini 3.1 Flash Lite** (For lightning-fast OCR & assignment parsing)
+*   **Tesseract.js** (For browser-local OCR)
+*   **QR Server API** (For instant UPI QR rendering)
 
-To learn more about Next.js, take a look at the following resources:
+---
+*Made for groups who love splitting bills, not friendships.*
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Why I Made This
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Tired of opening calculator apps after every group dinner and manually typing line items just to figure out who owes what? Existing splitters either force you to type everything by hand or make payments awkward by requiring manual UPI copy-pasting. 
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+I built **Hissab** to completely automate receipt math using Gemini AI and remove settlement friction. Just upload, assign, scan the custom QR, and settle up on the spot. No math, no typos, no awkward follow-ups.
