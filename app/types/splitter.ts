@@ -6,4 +6,5 @@ export interface Item {
   qty: number;
   unitPrice: number;
   lowConfidence?: boolean;
+  isSplitRow?: boolean; // true for rows auto-created by the qty-split panel
 }

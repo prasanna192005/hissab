@@ -441,22 +441,75 @@ export default function useReceiptSplitter() {
         body: JSON.stringify({
           text: nlpText,
           people,
-          items: items.map((i) => i.name)
+          // Send full item details so the API can reason about quantities
+          items: items.map((i) => ({ name: i.name, qty: i.qty, unitPrice: i.unitPrice }))
         })
       });
       const data = await res.json();
       if (data.assignments) {
-        const updated = { ...assignments };
+        const updatedAssignments = { ...assignments };
+        let updatedItems = [...items];
+
         data.assignments.forEach((asg: any) => {
-          const matchedItem = items.find(
+          const matchedItem = updatedItems.find(
             (item) => item.name.trim().toLowerCase() === asg.itemName.trim().toLowerCase()
           );
-          if (matchedItem) {
-            const validNames = asg.assignedPeople.filter((p: string) => people.includes(p));
-            updated[matchedItem.id] = validNames;
+          if (!matchedItem) return;
+
+          const validNames = (asg.assignedPeople as string[]).filter((p) => people.includes(p));
+
+          // Check if this is a quantity-split assignment (e.g. "Prasanna 2 papad, Rahul 3 papad")
+          const hasQtySplits = asg.quantitySplits && Array.isArray(asg.quantitySplits) && asg.quantitySplits.length > 0;
+
+          if (hasQtySplits) {
+            // Remove the original item and replace with per-person split rows
+            updatedItems = updatedItems.filter((i) => i.id !== matchedItem.id);
+            delete updatedAssignments[matchedItem.id];
+
+            let remainingQty = matchedItem.qty;
+
+            asg.quantitySplits.forEach((split: { person: string; qty: number }) => {
+              if (!people.includes(split.person)) return;
+              const splitQty = Math.min(split.qty, remainingQty);
+              if (splitQty <= 0) return;
+              remainingQty -= splitQty;
+
+              const newId = Math.random().toString(36).substring(2, 9);
+              const newItem: Item = {
+                id: newId,
+                name: `${matchedItem.name} (${split.person})`,
+                qty: splitQty,
+                unitPrice: matchedItem.unitPrice,
+                isSplitRow: true,
+              };
+              updatedItems.push(newItem);
+              updatedAssignments[newId] = [split.person];
+            });
+
+            // If there's a remainder (unattributed qty), keep it as a shared row
+            if (remainingQty > 0) {
+              const remainId = Math.random().toString(36).substring(2, 9);
+              const remainItem: Item = {
+                id: remainId,
+                name: `${matchedItem.name} (shared)`,
+                qty: remainingQty,
+                unitPrice: matchedItem.unitPrice,
+                isSplitRow: true,
+              };
+              updatedItems.push(remainItem);
+              // Assign remainder to everyone not already in a split
+              const splitPeople = asg.quantitySplits.map((s: any) => s.person).filter((p: string) => people.includes(p));
+              const remainPeople = people.filter((p) => !splitPeople.includes(p));
+              updatedAssignments[remainId] = remainPeople.length > 0 ? remainPeople : people;
+            }
+          } else {
+            // Simple assignment — no quantity split
+            updatedAssignments[matchedItem.id] = validNames;
           }
         });
-        setAssignments(updated);
+
+        setItems(updatedItems);
+        setAssignments(updatedAssignments);
         setNlpText("");
       }
     } catch (e) {
@@ -465,6 +518,7 @@ export default function useReceiptSplitter() {
       setNlpLoading(false);
     }
   };
+
 
   const calculateSplits = () => {
     const totals: Record<string, number> = {};
@@ -642,6 +696,93 @@ export default function useReceiptSplitter() {
     }
   };
 
+  // Merges all split sub-rows that share the same base name back into one row
+  const handleUnsplitItem = (itemId: string) => {
+    const targetItem = items.find((i) => i.id === itemId);
+    if (!targetItem) return;
+
+    // Derive the base name by stripping the " (Person)" suffix
+    const baseName = targetItem.name.replace(/\s*\([^)]+\)\s*$/, "").trim();
+
+    // Collect all split rows with the same base name
+    const siblings = items.filter(
+      (i) => i.isSplitRow && i.name.replace(/\s*\([^)]+\)\s*$/, "").trim() === baseName
+    );
+
+    if (siblings.length === 0) return;
+
+    const totalQty = siblings.reduce((s, i) => s + i.qty, 0);
+    const unitPrice = siblings[0].unitPrice;
+    const newId = Math.random().toString(36).substring(2, 9);
+
+    const mergedItem: Item = {
+      id: newId,
+      name: baseName,
+      qty: totalQty,
+      unitPrice,
+    };
+
+    const newItems = [
+      ...items.filter((i) => !siblings.map((s) => s.id).includes(i.id)),
+      mergedItem,
+    ];
+
+    const newAssignments = { ...assignments };
+    siblings.forEach((s) => delete newAssignments[s.id]);
+    // Don't pre-assign the merged row — let the user assign fresh
+
+    setItems(newItems);
+    setAssignments(newAssignments);
+  };
+
+
+  // e.g. Papad qty=5 → "Papad (Prasanna)" qty=2 + "Papad (Rahul)" qty=3
+  const handleSplitItemQty = (itemId: string, splits: { person: string; qty: number }[]) => {
+    const originalItem = items.find((i) => i.id === itemId);
+    if (!originalItem) return;
+
+    const validSplits = splits.filter((s) => s.qty > 0 && people.includes(s.person));
+    if (validSplits.length === 0) return;
+
+    const newItems = items.filter((i) => i.id !== itemId);
+    const newAssignments = { ...assignments };
+    delete newAssignments[itemId];
+
+    let remainingQty = originalItem.qty;
+
+    validSplits.forEach((split) => {
+      const splitQty = Math.min(split.qty, remainingQty);
+      if (splitQty <= 0) return;
+      remainingQty -= splitQty;
+      const newId = Math.random().toString(36).substring(2, 9);
+      newItems.push({
+        id: newId,
+        name: `${originalItem.name} (${split.person})`,
+        qty: splitQty,
+        unitPrice: originalItem.unitPrice,
+        isSplitRow: true,
+      });
+      newAssignments[newId] = [split.person];
+    });
+
+    // Keep any unaccounted remainder as a shared row
+    if (remainingQty > 0) {
+      const remainId = Math.random().toString(36).substring(2, 9);
+      newItems.push({
+        id: remainId,
+        name: `${originalItem.name} (shared)`,
+        qty: remainingQty,
+        unitPrice: originalItem.unitPrice,
+        isSplitRow: true,
+      });
+      const splitPeople = validSplits.map((s) => s.person);
+      newAssignments[remainId] = people.filter((p) => !splitPeople.includes(p));
+    }
+
+    setItems(newItems);
+    setAssignments(newAssignments);
+  };
+
   const onScanAnother = () => {
     setStep("UPLOAD");
     setFileData(null);
@@ -705,6 +846,8 @@ export default function useReceiptSplitter() {
     assignAllToItem,
     clearItemAssignments,
     handleNlpSubmit,
+    handleSplitItemQty,
+    handleUnsplitItem,
     handleProceedToSettlement,
     totals,
     itemsTotal,

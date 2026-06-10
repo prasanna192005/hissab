@@ -128,29 +128,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ assignments });
     }
 
-    const prompt = `You are an expert receipt bill splitter AI. 
-Analyze this user request text to map people to the items they consumed.
+    const prompt = `You are an expert receipt bill splitter AI.
+Analyze this user request text to map people to the items they consumed, including specific quantities where mentioned.
+
 User Text: "${text}"
 
 Available People:
 ${JSON.stringify(people)}
 
-Available Items:
+Available Items (with their total quantities):
 ${JSON.stringify(items)}
 
 Guidelines:
-1. Map people in the list to the items they ate or shared.
-2. If "everyone" or "all" is mentioned, assign ALL people in the list to that item.
-3. If "I", "me", "my", or "we" is mentioned, assign the first person in the list ("${people[0]}").
-4. Handle fuzzy matches and partial names (e.g., "pizza" refers to any item with "Pizza" in the name, "coke" maps to "Coke").
-5. Return assignments ONLY for items that are mentioned in the text. If an item is not mentioned, do not return an assignment for it.
+1. Map people to the items they ate or shared.
+2. If "everyone" or "all" is mentioned, assign ALL people to that item (no quantitySplits needed).
+3. If "I", "me", "my" is mentioned, it refers to the first person in the list ("${people[0]}").
+4. Handle fuzzy matches (e.g., "pizza" → any item with "Pizza" in the name, "coke" → "Coke").
+5. Return assignments ONLY for items mentioned in the text.
+6. IMPORTANT — Quantity Splits: If the user specifies how many units each person had (e.g., "Prasanna had 2 papad and Rahul had 3"), return a "quantitySplits" array with each person and their qty. The sum of quantitySplits.qty should not exceed the item's total qty. If no specific quantities per person are mentioned, leave quantitySplits empty and use assignedPeople instead.
 
-Return a JSON object conforming to this schema:
+Return a JSON object with this schema:
 {
   "assignments": [
     {
-      "itemName": "The exact item name from the Available Items list",
-      "assignedPeople": ["The exact names from the Available People list"]
+      "itemName": "The exact item name from Available Items",
+      "assignedPeople": ["Names from Available People — used when no quantity split"],
+      "quantitySplits": [
+        { "person": "Name from Available People", "qty": 2 }
+      ]
     }
   ]
 }`;
@@ -179,9 +184,20 @@ Return a JSON object conforming to this schema:
                   assignedPeople: {
                     type: "ARRAY",
                     items: { type: "STRING" }
+                  },
+                  quantitySplits: {
+                    type: "ARRAY",
+                    items: {
+                      type: "OBJECT",
+                      properties: {
+                        person: { type: "STRING" },
+                        qty: { type: "INTEGER" }
+                      },
+                      required: ["person", "qty"]
+                    }
                   }
                 },
-                required: ["itemName", "assignedPeople"]
+                required: ["itemName", "assignedPeople", "quantitySplits"]
               }
             }
           },

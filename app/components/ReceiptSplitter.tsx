@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { AlertTriangle } from "lucide-react";
 
 import StepsBar from "./splitter/StepsBar";
 import UploadStep from "./splitter/UploadStep";
@@ -75,8 +74,6 @@ export default function ReceiptSplitter() {
     nlpText,
     setNlpText,
     nlpLoading,
-    validationWarning,
-    setValidationWarning,
     ocrError,
     parsingTime,
     suggestedPeople,
@@ -94,6 +91,8 @@ export default function ReceiptSplitter() {
     assignAllToItem,
     clearItemAssignments,
     handleNlpSubmit,
+    handleSplitItemQty,
+    handleUnsplitItem,
     handleProceedToSettlement,
     totals,
     itemsTotal,
@@ -114,7 +113,6 @@ export default function ReceiptSplitter() {
           Free AI Bill Splitter App for Groups <br /> Split Restaurant Bills Instantly
         </p>
         <div className="h-1"></div>
-        <p className="text-[10px] uppercase tracking-wider">Terminal #3.1-Lite &middot; Store #1084</p>
         <p className="text-[10px] uppercase tracking-wider">
           Date: {new Date().toLocaleDateString("en-IN")} &middot; Time: {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
         </p>
@@ -129,42 +127,6 @@ export default function ReceiptSplitter() {
         tabWarning={tabWarning}
         onCloseWarning={() => setTabWarning(null)}
       />
-
-      {/* Validation alert banner */}
-      {validationWarning && (
-        <div className="my-6 p-4 border border-dashed border-stone-400 bg-stone-100/50 text-stone-900 flex gap-3 animate-fade-in text-xs">
-          <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-          <div className="flex-1">
-            <span className="font-bold block mb-1">
-              {validationWarning.type === "UNASSIGNED" ? "UNASSIGNED ITEMS WARNING" : "SINGLE PAYER CONFIRM"}
-            </span>
-            <p className="text-[10px] text-stone-600 mb-3">{validationWarning.message}</p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button
-                onClick={validationWarning.action}
-                className="bg-stone-900 text-white text-[10px] uppercase tracking-wider px-3 py-1.5 font-bold hover:bg-stone-800 transition"
-              >
-                {validationWarning.type === "UNASSIGNED" ? "Split rest with all" : "Split bill equally"}
-              </button>
-              <button
-                onClick={() => {
-                  setValidationWarning(null);
-                  setStep("SETTLEMENT");
-                }}
-                className="border border-stone-400 text-stone-700 bg-white text-[10px] uppercase tracking-wider px-3 py-1.5 font-bold hover:bg-stone-50 transition"
-              >
-                Proceed anyway
-              </button>
-              <button
-                onClick={() => setValidationWarning(null)}
-                className="text-[10px] text-stone-500 underline hover:text-stone-950"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 1. UPLOAD STEP */}
       {step === "UPLOAD" && (
@@ -229,6 +191,8 @@ export default function ReceiptSplitter() {
           toggleAssignment={toggleAssignment}
           assignAllToItem={assignAllToItem}
           clearItemAssignments={clearItemAssignments}
+          onSplitItem={handleSplitItemQty}
+          onUnsplitItem={handleUnsplitItem}
           onBack={() => setStep("PEOPLE")}
           onProceed={handleProceedToSettlement}
         />
@@ -265,7 +229,7 @@ export default function ReceiptSplitter() {
       <div className="text-center mt-12 space-y-3 pt-4 border-t border-dashed border-stone-200">
         <p className="text-[10px] font-bold tracking-widest text-stone-500">*** THANK YOU ***</p>
         <BarcodeIcon />
-        <p className="text-[8px] tracking-wider text-stone-400">TICKET &middot; HISSAB &middot; VER. 3.1.2</p>
+        <p className="text-[8px] tracking-wider text-stone-400">TICKET &middot; HISSAB</p>
       </div>
     </div>
   );

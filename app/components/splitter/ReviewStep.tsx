@@ -29,10 +29,13 @@ export default function ReviewStep({
   onUpdateItem,
   onNextStep,
 }: ReviewStepProps) {
+  const subtotal = items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
+
   return (
     <div className="space-y-6 animate-fade-in pt-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-widest text-stone-500">Receipt Line Items</h3>
+        {/* Only show the preview toggle if there IS a scanned file */}
         {fileData && (
           <button
             onClick={() => setShowReceiptPreview(!showReceiptPreview)}
@@ -59,7 +62,7 @@ export default function ReviewStep({
         </div>
       )}
 
-      {/* Receipt Preview Panel */}
+      {/* Receipt Preview Panel — hidden in manual entry mode */}
       {showReceiptPreview && fileData && (
         <div className="border border-stone-200 p-2 bg-stone-50 max-h-60 overflow-auto animate-fade-in flex justify-center">
           {mimeType === "application/pdf" ? (
@@ -140,13 +143,13 @@ export default function ReviewStep({
         )}
       </div>
 
-      {/* Subtotal preview for verification */}
+      {/* Subtotal */}
       <div className="flex justify-between items-baseline border-b border-stone-300 border-dashed pb-2.5">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Subtotal (Verify with receipt)</span>
-        <span className="text-sm font-bold text-stone-950">₹{items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0).toFixed(2)}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Subtotal</span>
+        <span className="text-sm font-bold text-stone-950">₹{subtotal.toFixed(2)}</span>
       </div>
 
-      <div className="flex justify-between items-center pt-2">
+      <div className="flex justify-between items-center pt-1">
         <button
           onClick={onAddItem}
           className="text-xs uppercase tracking-wider font-bold text-stone-900 border border-stone-400 px-4 py-2 hover:bg-stone-50 transition flex items-center gap-1.5"

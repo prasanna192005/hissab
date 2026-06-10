@@ -74,14 +74,6 @@ export default function UploadStep({
             Tesseract.js (Local)
           </button>
         </div>
-        <p className="text-[8px] text-stone-500 mt-0.5 leading-normal">
-          {ocrEngine === "gemini"
-            ? "* Gemini cloud parsing: Fast and highly accurate for restaurant snaps."
-            : "* Local browser parsing: Extracts text locally without uploading your image."}
-        </p>
-        <p className="text-[8px] text-stone-500 mt-1.5 leading-normal border-t border-stone-200 border-dashed pt-1.5 font-bold uppercase tracking-wider">
-          * Note: Hissab extracts base food/beverage items only. Taxes (GST, Service Charge) and tips can be added on the final screen to split them proportionally.
-        </p>
       </div>
 
       <div
@@ -133,18 +125,7 @@ export default function UploadStep({
         </button>
       </div>
 
-      {/* Scanning Tips Panel */}
-      <div className="p-4 bg-stone-50 border border-dashed border-stone-300 text-[9px] uppercase tracking-wider text-stone-600 space-y-2 leading-relaxed">
-        <span className="font-bold text-stone-850 block border-b border-stone-200 border-dashed pb-1 select-none">
-          Tips for Best OCR Results:
-        </span>
-        <ul className="list-disc pl-4 space-y-1 select-none">
-          <li>Keep the paper flat and avoid bends or creases.</li>
-          <li>Ensure even, bright lighting (avoid shadows of your hand).</li>
-          <li>Crop the photo closely to the printed bill area.</li>
-          <li>Make sure the text is sharp and not blurry.</li>
-        </ul>
-      </div>
+
     </div>
   );
 }
