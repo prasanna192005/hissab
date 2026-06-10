@@ -49,6 +49,41 @@ export default function SettlementStep({
   copySummaryToClipboard,
   onScanAnother,
 }: SettlementStepProps) {
+  const handleShareClick = () => {
+    let msg = `*Hissab Bill Settlement Summary*\n`;
+    msg += `Total Amount: ₹${grandTotal.toFixed(2)}\n`;
+    msg += `(Subtotal: ₹${itemsTotal.toFixed(2)}`;
+    if (gst > 0) msg += ` + GST: ₹${gst.toFixed(2)}`;
+    if (serviceCharge > 0) msg += ` + Svc Chg: ₹${serviceCharge.toFixed(2)}`;
+    if (tip > 0) msg += ` + Tip: ₹${tip.toFixed(2)}`;
+    msg += `)\n`;
+    msg += `Payer: *${payer}*\n\n`;
+    msg += `*Individual Shares:*\n`;
+    
+    people.forEach((person) => {
+      const share = totals[person] || 0;
+      if (person === payer) {
+        msg += `- ${person}: ₹${share.toFixed(2)} (Paid the bill)\n`;
+      } else {
+        msg += `- ${person}: ₹${share.toFixed(2)} (owes ${payer} ₹${share.toFixed(2)})\n`;
+      }
+    });
+
+    msg += `\nSplit easily with Hissab!`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      navigator.share({
+        title: "Hissab Bill Settlement",
+        text: msg
+      }).catch((err) => {
+        console.error("Error using native share:", err);
+      });
+    } else {
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pt-4">
       <div>
@@ -308,19 +343,18 @@ export default function SettlementStep({
 
       {/* Share/Actions */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        <a
-          href={getWhatsAppShareLink()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1 bg-stone-950 text-white py-3 px-4 font-bold uppercase tracking-wider text-xs hover:bg-stone-900 transition flex items-center justify-center border border-stone-950 gap-2"
+        <button
+          type="button"
+          onClick={handleShareClick}
+          className="flex-1 bg-stone-950 text-white py-3 px-4 font-bold uppercase tracking-wider text-xs hover:bg-stone-900 transition flex items-center justify-center border border-stone-950 gap-2 focus:outline-none"
         >
           <Share2 className="w-4 h-4 text-white" />
-          Share via WhatsApp
-        </a>
+          Share Bill Summary
+        </button>
         <button
           type="button"
           onClick={copySummaryToClipboard}
-          className="flex-1 border border-stone-400 bg-white text-stone-850 py-3 px-4 font-bold uppercase tracking-wider text-xs hover:bg-stone-50 transition"
+          className="flex-1 border border-stone-400 bg-white text-stone-850 py-3 px-4 font-bold uppercase tracking-wider text-xs hover:bg-stone-50 transition focus:outline-none"
         >
           Copy summary text
         </button>
