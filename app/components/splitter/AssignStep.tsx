@@ -7,7 +7,7 @@ interface AssignStepProps {
   people: string[];
   assignments: Record<string, string[]>;
   nlpText: string;
-  setNlpText: (val: string) => void;
+  setNlpText: React.Dispatch<React.SetStateAction<string>>;
   nlpLoading: boolean;
   onNlpSubmit: (e: React.FormEvent) => void;
   toggleAssignment: (itemId: string, person: string) => void;
