@@ -43,6 +43,16 @@ self.addEventListener('fetch', (event) => {
   // Skip non-http/https protocols (like chrome-extension)
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
+  // Skip Next.js internal assets, hot-module replacement (HMR), and API endpoints
+  if (
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.includes('webpack-hmr') ||
+    url.pathname.includes('hot-update')
+  ) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {

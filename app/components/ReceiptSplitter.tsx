@@ -102,6 +102,8 @@ export default function ReceiptSplitter() {
     isTabEnabled,
     handleTabClick,
     onScanAnother,
+    roundInterval,
+    handleRoundIntervalChange,
   } = useReceiptSplitter();
 
   return (
@@ -120,13 +122,15 @@ export default function ReceiptSplitter() {
 
       <hr className="perforated-divider" />
 
-      <StepsBar
-        step={step}
-        isTabEnabled={isTabEnabled}
-        onTabClick={handleTabClick}
-        tabWarning={tabWarning}
-        onCloseWarning={() => setTabWarning(null)}
-      />
+      <div className="exclude-from-receipt">
+        <StepsBar
+          step={step}
+          isTabEnabled={isTabEnabled}
+          onTabClick={handleTabClick}
+          tabWarning={tabWarning}
+          onCloseWarning={() => setTabWarning(null)}
+        />
+      </div>
 
       {/* 1. UPLOAD STEP */}
       {step === "UPLOAD" && (
@@ -222,6 +226,8 @@ export default function ReceiptSplitter() {
           getWhatsAppShareLink={getWhatsAppShareLink}
           copySummaryToClipboard={copySummaryToClipboard}
           onScanAnother={onScanAnother}
+          roundInterval={roundInterval}
+          onRoundIntervalChange={handleRoundIntervalChange}
         />
       )}
 
@@ -230,6 +236,21 @@ export default function ReceiptSplitter() {
         <p className="text-[10px] font-bold tracking-widest text-stone-500">*** THANK YOU ***</p>
         <BarcodeIcon />
         <p className="text-[8px] tracking-wider text-stone-400">TICKET &middot; HISSAB</p>
+      </div>
+
+      {/* Made by Prasanna signature, excluded from exported receipt image */}
+      <div className="text-center mt-6 pt-4 border-t border-stone-200 border-dashed exclude-from-receipt">
+        <p className="text-[10px] font-bold tracking-widest text-stone-500 uppercase">
+          Made by{" "}
+          <a
+            href="https://github.com/prasanna192005"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-stone-700 hover:text-stone-950 underline underline-offset-2 transition"
+          >
+            Prasanna
+          </a>
+        </p>
       </div>
     </div>
   );

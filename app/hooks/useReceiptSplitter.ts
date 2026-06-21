@@ -46,10 +46,13 @@ export default function useReceiptSplitter() {
   // Suggestions for people list
   const [suggestedPeople, setSuggestedPeople] = useState<string[]>([]);
 
+  // Round-off configuration (0 means none, 1 means ₹1, 5 means ₹5, 10 means ₹10)
+  const [roundInterval, setRoundInterval] = useState<number>(0);
+
   // Show/Hide receipt preview panel in review mode
   const [showReceiptPreview, setShowReceiptPreview] = useState(false);
 
-  // Load previous participants and UPI ID on mount
+  // Load previous participants, UPI ID, and roundInterval on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem("receiptsplit_previous_people");
@@ -59,6 +62,10 @@ export default function useReceiptSplitter() {
       const storedUpi = localStorage.getItem("receiptsplit_payer_upi_id");
       if (storedUpi) {
         setUpiId(storedUpi);
+      }
+      const storedRound = localStorage.getItem("receiptsplit_round_interval");
+      if (storedRound) {
+        setRoundInterval(parseInt(storedRound) || 0);
       }
     } catch (e) {
       console.error("Failed to load historical people or UPI ID", e);
@@ -96,6 +103,15 @@ export default function useReceiptSplitter() {
       localStorage.setItem("receiptsplit_payer_upi_id", trimmed);
     } catch (e) {
       console.error("Failed to save UPI ID to localStorage", e);
+    }
+  };
+
+  const handleRoundIntervalChange = (val: number) => {
+    setRoundInterval(val);
+    try {
+      localStorage.setItem("receiptsplit_round_interval", String(val));
+    } catch (e) {
+      console.error("Failed to save round interval to localStorage", e);
     }
   };
 
@@ -581,6 +597,23 @@ export default function useReceiptSplitter() {
 
     const grandTotal = itemsTotal + gst + serviceCharge + tip;
 
+    // Apply Smart Round-off discrepancy adjuster
+    if (roundInterval > 0 && people.length > 0) {
+      let nonPayersSum = 0;
+      people.forEach((person) => {
+        if (person !== payer) {
+          const originalShare = totals[person] || 0;
+          const roundedShare = Math.round(originalShare / roundInterval) * roundInterval;
+          totals[person] = roundedShare;
+          nonPayersSum += roundedShare;
+        }
+      });
+      // Payer absorbs the rounding discrepancy
+      if (people.includes(payer)) {
+        totals[payer] = Math.max(0, grandTotal - nonPayersSum);
+      }
+    }
+
     return { totals, itemsTotal, grandTotal };
   };
 
@@ -879,5 +912,7 @@ export default function useReceiptSplitter() {
     copySummaryToClipboard,
     isTabEnabled,
     handleTabClick,
+    roundInterval,
+    handleRoundIntervalChange,
   };
 }
